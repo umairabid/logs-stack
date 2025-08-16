@@ -1,9 +1,44 @@
+networks:
+  loki: 
+
 services:
   alloy:
-    image: "alloy:v1.10.0"
+    image: "grafana/alloy:v1.10.0"
     container_name: "alloy"
+    networks:
+      - loki
     ports:
       - "12345:12345"
     volumes:
       - ./alloy.config:/etc/alloy/config.alloy
       - /var/lib/alloy/data:/var/lib/alloy/data
+      - /var/log/nginx/app.sweatywallet.ca-access.log:/var/log/nginx/app.sweatywallet.ca-access.log
+      - /var/log/nginx/app.sweatywallet.ca-error.log:/var/log/nginx/app.sweatywallet.ca-error.log
+      - /var/log/journal:/var/log/journal:ro
+    command:
+      [
+        "run",
+        "/etc/alloy/config.alloy",
+        "--server.http.listen-addr=0.0.0.0:12345",
+        "--storage.path=/var/lib/alloy/data"]
+
+  loki:
+    image: "grafana/loki:3.5.3"
+    container_name: "loki"
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki.yaml:/etc/loki/local-config.yaml
+      - /var/www/loki-data:/loki
+    networks:
+      - loki
+
+  grafana:
+    image: "grafana/grafana-enterprise:12.1.0"
+    container_name: "grafana"
+    volumes:
+      - /var/www/grafana-data:/var/lib/grafana
+    ports:
+      - "2000:3000"
+    networks:
+      - loki
